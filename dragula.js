@@ -39,6 +39,7 @@ function dragula (initialContainers, options) {
   if (o.direction === void 0) { o.direction = 'vertical'; }
   if (o.ignoreInputTextSelection === void 0) { o.ignoreInputTextSelection = true; }
   if (o.mirrorContainer === void 0) { o.mirrorContainer = doc.body; }
+  if (o.puzzleMode === void 0) { o.puzzleMode = false; }
 
   var drake = emitter({
     containers: o.containers,
@@ -241,7 +242,10 @@ function dragula (initialContainers, options) {
     var clientY = getCoord('clientY', e);
     var elementBehindCursor = getElementBehindPoint(_mirror, clientX, clientY);
     var dropTarget = findDropTarget(elementBehindCursor, clientX, clientY);
-    if (dropTarget && ((_copy && o.copySortSource) || (!_copy || dropTarget !== _source))) {
+
+    if (o.puzzleMode) {
+      drop(item, dropTarget, elementBehindCursor);
+    } else if (dropTarget && ((_copy && o.copySortSource) || (!_copy || dropTarget !== _source))) {
       drop(item, dropTarget);
     } else if (o.removeOnSpill) {
       remove();
@@ -250,15 +254,19 @@ function dragula (initialContainers, options) {
     }
   }
 
-  function drop (item, target) {
-    var parent = getParent(item);
-    if (_copy && o.copySortSource && target === _source) {
-      parent.removeChild(_item);
-    }
-    if (isInitialPlacement(target)) {
-      drake.emit('cancel', item, _source, _source);
+  function drop (item, target, elementBehindCursor) {
+    if (o.puzzleMode) {
+      drake.emit('drop', item, target, _source, _currentSibling, elementBehindCursor);
     } else {
-      drake.emit('drop', item, target, _source, _currentSibling);
+      var parent = getParent(item);
+      if (_copy && o.copySortSource && target === _source) {
+        parent.removeChild(_item);
+      }
+      if (isInitialPlacement(target)) {
+        drake.emit('cancel', item, _source, _source);
+      } else {
+        drake.emit('drop', item, target, _source, _currentSibling);
+      }
     }
     cleanup();
   }
@@ -403,7 +411,7 @@ function dragula (initialContainers, options) {
       reference !== nextEl(item)
     ) {
       _currentSibling = reference;
-      dropTarget.insertBefore(item, reference);
+      !o.puzzleMode && dropTarget.insertBefore(item, reference);
       drake.emit('shadow', item, dropTarget, _source);
     }
     function moved (type) { drake.emit(type, item, _lastDropTarget, _source); }
